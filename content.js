@@ -144,9 +144,7 @@ async function blockById(targetUserId) {
 }
 
 async function fetchProfile(username) {
-  const u = username.toLowerCase();
-
-  // Try authenticated API first — richest data
+  // Try authenticated API first — fast, full data
   try {
     const r = await fetch(`/api/v1/users/web_profile_info/?username=${encodeURIComponent(username)}`, {
       headers: { 'x-ig-app-id': '936619743392459' },
@@ -160,26 +158,68 @@ async function fetchProfile(username) {
     };
   } catch {}
 
-  // Anonymous fetch — bypasses block relationship
+  // Anonymous fetch — no cookies → Instagram sees no block → full public HTML
   try {
     const r = await fetch(`/${encodeURIComponent(username)}/`, { credentials: 'omit' });
     if (r.ok) {
       const html = await r.text();
-      const userId = parseUserIdFromHtml(html, username);
-      if (userId) {
-        const followers = parseCountFromHtml(html, 'followers') ?? parseCountFromHtml(html, 'edge_followed_by');
-        const following = parseCountFromHtml(html, 'following') ?? parseCountFromHtml(html, 'edge_follow');
-        return { userId, username, followers, following };
-      }
+      return parseProfileFromHtml(html, username.toLowerCase());
     }
   } catch {}
 
   return null;
 }
 
-function parseCountFromHtml(html, key) {
-  const m = html.match(new RegExp(`"${key}"[^}]{0,80}"count"\\s*:\\s*(\\d+)`));
-  return m ? parseInt(m[1], 10) : null;
+// Recursively search parsed JSON for an object matching predicate
+function deepFind(obj, predicate, depth = 8) {
+  if (!obj || typeof obj !== 'object' || depth === 0) return null;
+  if (predicate(obj)) return obj;
+  for (const v of Object.values(obj)) {
+    const found = deepFind(v, predicate, depth - 1);
+    if (found) return found;
+  }
+  return null;
+}
+
+function parseProfileFromHtml(html, usernameLower) {
+  // Parse each <script type="application/json"> block and traverse the JSON tree.
+  // Instagram embeds the full Relay store here, including follower/following counts.
+  const blocks = [...html.matchAll(/<script type="application\/json"[^>]*>([\s\S]*?)<\/script>/g)];
+
+  for (const [, content] of blocks) {
+    try {
+      const data = JSON.parse(content);
+      const user = deepFind(data, o =>
+        typeof o?.username === 'string' &&
+        o.username.toLowerCase() === usernameLower &&
+        (o.id || o.pk)
+      );
+      if (user) {
+        return {
+          userId:    user.id    ?? user.pk,
+          username:  user.username,
+          followers: user.edge_followed_by?.count ?? user.follower_count  ?? null,
+          following: user.edge_follow?.count      ?? user.following_count ?? null,
+        };
+      }
+    } catch {}
+  }
+
+  // Regex fallback if JSON parsing misses it
+  const userId = parseUserIdFromHtml(html, usernameLower);
+  if (!userId) return null;
+  return {
+    userId,
+    username:  usernameLower,
+    followers: extractCount(html, 'edge_followed_by') ?? extractCount(html, 'follower_count'),
+    following: extractCount(html, 'edge_follow')      ?? extractCount(html, 'following_count'),
+  };
+}
+
+function extractCount(html, key) {
+  // Handles both {"count":N} and flat "key":N forms
+  const m = html.match(new RegExp(`"${key}"\\s*:\\s*(?:\\{[^}]{0,40}"count"\\s*:\\s*(\\d+)|(\\d+))`));
+  return m ? parseInt(m[1] ?? m[2], 10) : null;
 }
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
