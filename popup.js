@@ -1,3 +1,6 @@
+/* global browser */
+const _chrome = typeof browser !== 'undefined' ? browser : chrome; // Firefox / Chrome compat
+
 const input    = document.getElementById('username');
 const blockBtn = document.getElementById('blockBtn');
 const infoBtn  = document.getElementById('infoBtn');
@@ -22,14 +25,14 @@ function fmt(n) {
 
 function sendMsg(type, payload) {
   return new Promise(resolve =>
-    chrome.runtime.sendMessage({ type, ...payload }, resp =>
-      resolve(chrome.runtime.lastError ? null : resp)
+    _chrome.runtime.sendMessage({ type, ...payload }, resp =>
+      resolve(_chrome.runtime.lastError ? null : resp)
     )
   );
 }
 
 // Auto-fill username from active tab URL
-chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+_chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
   const url = tabs[0]?.url ?? '';
   const m = url.match(/instagram\.com\/([a-zA-Z0-9._]+)\/?(?:\?|$)/);
   const reserved = new Set(['explore', 'reels', 'stories', 'direct', 'accounts', 'p', 'tv']);

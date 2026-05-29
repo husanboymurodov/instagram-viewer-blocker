@@ -1,4 +1,6 @@
 // Runs on instagram.com — handles block requests from the popup only.
+/* global browser */
+const _chrome = typeof browser !== 'undefined' ? browser : chrome; // Firefox / Chrome compat
 
 const DOC_ID = '27585081607756220'; // usePolarisBlockManyMutation — refresh if Instagram redeploys
 
@@ -247,7 +249,7 @@ function extractCount(html, key) {
   return m ? parseInt(m[1] ?? m[2], 10) : null;
 }
 
-chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+_chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.type === 'FETCH_PROFILE') {
     fetchProfile(msg.username)
       .then(profile => sendResponse({ ok: !!profile, profile }))
