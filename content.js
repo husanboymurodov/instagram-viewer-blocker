@@ -190,12 +190,13 @@ async function fetchProfile(username) {
 
 function profileFromApiUser(d) {
   return {
-    userId:    d.id,
-    username:  d.username,
-    isPrivate: d.is_private ?? false,
-    followers: d.edge_followed_by?.count             ?? d.follower_count  ?? null,
-    following: d.edge_follow?.count                  ?? d.following_count ?? null,
-    posts:     d.edge_owner_to_timeline_media?.count ?? d.media_count     ?? null,
+    userId:     d.id,
+    username:   d.username,
+    isPrivate:  d.is_private ?? false,
+    profilePic: d.profile_pic_url_hd ?? d.profile_pic_url ?? null,
+    followers:  d.edge_followed_by?.count             ?? d.follower_count  ?? null,
+    following:  d.edge_follow?.count                  ?? d.following_count ?? null,
+    posts:      d.edge_owner_to_timeline_media?.count ?? d.media_count     ?? null,
   };
 }
 
@@ -222,12 +223,13 @@ function parseProfileFromHtml(html, usernameLower) {
       );
       if (user) {
         return {
-          userId:    user.id    ?? user.pk,
-          username:  user.username,
-          isPrivate: user.is_private ?? false,
-          followers: user.edge_followed_by?.count             ?? user.follower_count  ?? null,
-          following: user.edge_follow?.count                  ?? user.following_count ?? null,
-          posts:     user.edge_owner_to_timeline_media?.count ?? user.media_count     ?? null,
+          userId:     user.id    ?? user.pk,
+          username:   user.username,
+          isPrivate:  user.is_private ?? false,
+          profilePic: user.profile_pic_url_hd ?? user.profile_pic_url ?? null,
+          followers:  user.edge_followed_by?.count             ?? user.follower_count  ?? null,
+          following:  user.edge_follow?.count                  ?? user.following_count ?? null,
+          posts:      user.edge_owner_to_timeline_media?.count ?? user.media_count     ?? null,
         };
       }
     } catch {}
@@ -245,11 +247,15 @@ function parseProfileFromHtml(html, usernameLower) {
 
   if (userId || fromMeta) {
     const parse = (m) => m ? parseInt(m[1].replace(/,/g, ''), 10) : null;
-    const isPrivate = /is_private["'\s]*:["'\s]*true/i.test(html);
+    const isPrivate  = /is_private["'\s]*:["'\s]*true/i.test(html);
+    const picMatch   = html.match(/"profile_pic_url_hd"\s*:\s*"([^"]+)"/);
+    const picMatch2  = picMatch ?? html.match(/"profile_pic_url"\s*:\s*"([^"]+)"/);
+    const profilePic = picMatch2 ? picMatch2[1].replace(/\\u0026/g, '&').replace(/\\\//g, '/') : null;
     return {
       userId:    userId ?? null,
       username:  usernameLower,
       isPrivate,
+      profilePic,
       followers: parse(fwrMatch)  ?? extractCount(html, 'edge_followed_by')             ?? extractCount(html, 'follower_count'),
       following: parse(fwgMatch)  ?? extractCount(html, 'edge_follow')                  ?? extractCount(html, 'following_count'),
       posts:     parse(postMatch) ?? extractCount(html, 'edge_owner_to_timeline_media')  ?? extractCount(html, 'media_count'),

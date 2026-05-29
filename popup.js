@@ -5,6 +5,7 @@ const input      = document.getElementById('username');
 const blockBtn   = document.getElementById('blockBtn');
 const infoBtn    = document.getElementById('infoBtn');
 const infoBox    = document.getElementById('infoBox');
+const avatar     = document.getElementById('avatar');
 const iUsername  = document.getElementById('iUsername');
 const iId        = document.getElementById('iId');
 const iFollowers = document.getElementById('iFollowers');
@@ -65,6 +66,14 @@ infoBtn.addEventListener('click', async () => {
 
   const p = resp.profile;
   const priv = p.isPrivate;
+
+  if (p.profilePic) {
+    avatar.src = p.profilePic;
+    avatar.style.display = 'block';
+  } else {
+    avatar.style.display = 'none';
+  }
+
   iUsername.textContent  = '@' + p.username + (priv ? ' 🔒' : '');
   iId.textContent        = p.userId ?? '—';
   iFollowers.textContent = fmt(p.followers, priv);

@@ -58,6 +58,14 @@
     #infoBox .row { margin: 0; gap: 0; justify-content: space-between; }
     #infoBox .label { color: #666; }
     #infoBox .val   { color: #fff; font-weight: 500; }
+    #avatar {
+      width: 56px; height: 56px;
+      border-radius: 50%;
+      object-fit: cover;
+      display: block;
+      margin: 0 auto 10px;
+      border: 2px solid #333;
+    }
     #status { font-size: 12px; text-align: center; min-height: 16px; }
     .ok  { color: #4CAF50; }
     .err { color: #ed4956; }
@@ -71,6 +79,7 @@
     <button id="blockBtn">Block</button>
   </div>
   <div id="infoBox">
+    <img id="avatar" src="" alt="Profile picture" style="display:none" />
     <div class="row"><span class="label">Username</span><span class="val" id="iUsername">—</span></div>
     <div class="row"><span class="label">User ID</span><span class="val" id="iId">—</span></div>
     <div class="row"><span class="label">Followers</span><span class="val" id="iFollowers">—</span></div>
