@@ -5,8 +5,14 @@
   "description": "Block Instagram accounts — even ones that blocked you first.",
   "permissions": ["cookies", "activeTab", "scripting", "tabs"],
   "host_permissions": ["https://www.instagram.com/*"],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "ig-blocker@husanboy",
+      "strict_min_version": "109.0"
+    }
+  },
   "background": {
-    "service_worker": "background.js"
+    "scripts": ["background.js"]
   },
   "content_scripts": [
     {
