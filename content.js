@@ -184,8 +184,9 @@ function profileFromApiUser(d) {
   return {
     userId:    d.id,
     username:  d.username,
-    followers: d.edge_followed_by?.count ?? d.follower_count  ?? null,
-    following: d.edge_follow?.count      ?? d.following_count ?? null,
+    followers: d.edge_followed_by?.count            ?? d.follower_count  ?? null,
+    following: d.edge_follow?.count                 ?? d.following_count ?? null,
+    posts:     d.edge_owner_to_timeline_media?.count ?? d.media_count    ?? null,
   };
 }
 
@@ -214,29 +215,32 @@ function parseProfileFromHtml(html, usernameLower) {
         return {
           userId:    user.id    ?? user.pk,
           username:  user.username,
-          followers: user.edge_followed_by?.count ?? user.follower_count  ?? null,
-          following: user.edge_follow?.count      ?? user.following_count ?? null,
+          followers: user.edge_followed_by?.count             ?? user.follower_count  ?? null,
+          following: user.edge_follow?.count                  ?? user.following_count ?? null,
+          posts:     user.edge_owner_to_timeline_media?.count ?? user.media_count     ?? null,
         };
       }
     } catch {}
   }
 
   // Strategy 2: meta description — Instagram writes "X Followers, Y Following, Z Posts"
-  // in the <meta name="description"> tag for anonymous visitors
   const userId = parseUserIdFromHtml(html, usernameLower);
   const metaDesc = html.match(/<meta[^>]+name="description"[^>]+content="([^"]+)"/i)?.[1]
                 ?? html.match(/<meta[^>]+content="([^"]+)"[^>]+name="description"/i)?.[1]
                 ?? '';
-  const fwrMatch = metaDesc.match(/([\d,]+)\s*Followers?/i);
-  const fwgMatch = metaDesc.match(/([\d,]+)\s*Following/i);
-  const fromMeta = fwrMatch || fwgMatch;
+  const fwrMatch  = metaDesc.match(/([\d,]+)\s*Followers?/i);
+  const fwgMatch  = metaDesc.match(/([\d,]+)\s*Following/i);
+  const postMatch = metaDesc.match(/([\d,]+)\s*Posts?/i);
+  const fromMeta  = fwrMatch || fwgMatch || postMatch;
 
   if (userId || fromMeta) {
+    const parse = (m) => m ? parseInt(m[1].replace(/,/g, ''), 10) : null;
     return {
       userId:    userId ?? null,
       username:  usernameLower,
-      followers: fwrMatch ? parseInt(fwrMatch[1].replace(/,/g, ''), 10) : (extractCount(html, 'edge_followed_by') ?? extractCount(html, 'follower_count')),
-      following: fwgMatch ? parseInt(fwgMatch[1].replace(/,/g, ''), 10) : (extractCount(html, 'edge_follow')      ?? extractCount(html, 'following_count')),
+      followers: parse(fwrMatch)  ?? extractCount(html, 'edge_followed_by')            ?? extractCount(html, 'follower_count'),
+      following: parse(fwgMatch)  ?? extractCount(html, 'edge_follow')                 ?? extractCount(html, 'following_count'),
+      posts:     parse(postMatch) ?? extractCount(html, 'edge_owner_to_timeline_media') ?? extractCount(html, 'media_count'),
     };
   }
 

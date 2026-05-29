@@ -9,6 +9,7 @@ const iUsername  = document.getElementById('iUsername');
 const iId        = document.getElementById('iId');
 const iFollowers = document.getElementById('iFollowers');
 const iFollowing = document.getElementById('iFollowing');
+const iPosts     = document.getElementById('iPosts');
 const status   = document.getElementById('status');
 
 function setStatus(msg, cls) {
@@ -60,6 +61,7 @@ infoBtn.addEventListener('click', async () => {
   iId.textContent        = p.userId;
   iFollowers.textContent = fmt(p.followers);
   iFollowing.textContent = fmt(p.following);
+  iPosts.textContent     = fmt(p.posts);
   infoBox.classList.add('visible');
   setStatus('');
 });
