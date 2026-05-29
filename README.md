@@ -39,7 +39,7 @@ Calls Instagram's internal GraphQL mutation (`usePolarisBlockManyMutation`) — 
 ### Firefox (109+)
 1. Clone this repo
 2. Go to `about:debugging` → **This Firefox** → **Load Temporary Add-on**
-3. Navigate into the repo folder and select **`manifest.firefox.json`**
+3. Navigate into the repo folder and select **`manifest.json`**
 
 > **Note:** If you see "Refresh the Instagram tab", do so once. This happens when the tab was open before the extension loaded.
 
