@@ -6,8 +6,8 @@ Chrome and Firefox extension to block any Instagram account by username — incl
 
 - **One-click block** — open popup on any profile, username auto-fills, click Block
 - **Works when blocked** — if they blocked you first, Instagram hides their profile; this extension bypasses that
-- **Profile Info** — reveals user ID, follower count, following count, and post count for any account, even blocked ones
-- **Private account detection** — shows 🔒 and "Private" instead of blank dashes for private accounts
+- **Profile Info** — reveals full name, bio, external link, user ID, follower/following/post counts, and profile picture for any account, even blocked ones
+- **Private account detection** — shows 🔒 and verified ✓ badge; counts still visible for private accounts
 - **Graceful error messages** — expired DOC_ID, connection issues, and private accounts all surface clear messages
 - **Fully automatic** — user only ever types a username; ID resolution and blocking happen in the background
 
@@ -52,18 +52,21 @@ Calls Instagram's internal GraphQL mutation (`usePolarisBlockManyMutation`) — 
 | Look up profile info | Type username → **Profile Info** |
 
 **Profile Info shows:**
-- Username
+- Username (with 🔒 private / ✓ verified badges)
+- Full name
 - User ID
-- Followers
-- Following
-- Posts
+- Followers / Following / Posts
+- Bio
+- External link
+- Profile picture
 
 ## Notes
 
 - Must be logged into Instagram in the same browser
+- Cannot block yourself — the extension detects and prevents this
 - `DOC_ID` in `content.js` is tied to Instagram's current deploy — if blocking stops working, the extension will display a clear error message; capture a fresh `usePolarisBlockManyMutation` request from the Network tab and update the value
-- If you see "Refresh the Instagram tab", do so once — happens when the tab was open before the extension loaded
-- Private accounts show 🔒 in Profile Info; follower/following/post counts display as "Private"
+- If you see "Could not fetch profile — try reloading the Instagram tab", do so once — happens when the tab was open before the extension loaded
+- Profile pictures are fetched and embedded as data URLs — no CDN CORS issues
 
 ## Privacy
 
