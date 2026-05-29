@@ -12,7 +12,7 @@
       padding: 16px;
     }
     h2 { font-size: 15px; margin-bottom: 12px; color: #ed4956; }
-    p  { font-size: 12px; color: #aaa; margin-bottom: 12px; line-height: 1.5; }
+    p  { font-size: 12px; color: #aaa; margin-bottom: 8px; line-height: 1.5; }
     input {
       width: 100%;
       padding: 8px 10px;
@@ -25,6 +25,7 @@
       outline: none;
     }
     input:focus { border-color: #ed4956; }
+    .row { display: flex; gap: 6px; margin-bottom: 8px; }
     button {
       width: 100%;
       padding: 9px;
@@ -36,25 +37,67 @@
       font-size: 13px;
       cursor: pointer;
     }
-    button:disabled { background: #555; cursor: default; }
-    #status { font-size: 12px; margin-top: 8px; text-align: center; min-height: 18px; }
+    button.secondary {
+      background: #2a2a2a;
+      color: #ccc;
+      border: 1px solid #444;
+    }
+    button.secondary:hover { background: #333; }
+    button:disabled { background: #555 !important; color: #999; cursor: default; }
+    #revealBox {
+      display: none;
+      align-items: center;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 6px;
+      padding: 7px 10px;
+      margin-bottom: 8px;
+      gap: 6px;
+    }
+    #revealBox.visible { display: flex; }
+    #revealedId { flex: 1; font-size: 13px; color: #fff; font-family: monospace; word-break: break-all; }
+    #copyBtn {
+      width: auto;
+      padding: 4px 8px;
+      font-size: 11px;
+      border-radius: 4px;
+      background: #333;
+      color: #ccc;
+      border: 1px solid #444;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    #copyBtn:hover { background: #444; }
+    hr { border: none; border-top: 1px solid #222; margin: 12px 0; }
+    .status { font-size: 12px; margin-top: 4px; text-align: center; min-height: 16px; }
     .ok  { color: #4CAF50; }
     .err { color: #ed4956; }
   </style>
 </head>
 <body>
   <h2>IG Blocker</h2>
-  <p>Block by username — tries search API as fallback if they blocked you.</p>
+
   <input id="username" type="text" placeholder="@username" autocomplete="off" spellcheck="false" />
-  <button id="blockBtn">Block by Username</button>
-  <div id="status"></div>
 
-  <hr style="border-color:#222; margin:14px 0;" />
+  <div class="row">
+    <button id="revealBtn" class="secondary">Reveal ID</button>
+    <button id="blockBtn">Block</button>
+  </div>
 
-  <p style="color:#777;">User ID — auto-filled from username above, or enter manually:</p>
+  <div id="revealBox">
+    <span id="revealedId"></span>
+    <button id="copyBtn">Copy</button>
+  </div>
+
+  <div id="status" class="status"></div>
+
+  <hr />
+
+  <p style="color:#777;">User ID — auto-filled above, or enter manually:</p>
   <input id="userid" type="text" placeholder="User ID (e.g. 77539356504)" autocomplete="off" spellcheck="false" />
   <button id="blockByIdBtn">Block by User ID</button>
-  <div id="statusId"></div>
+  <div id="statusId" class="status"></div>
+
   <script src="popup.js"></script>
 </body>
 </html>
