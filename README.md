@@ -4,7 +4,7 @@ Chrome and Firefox extension to view profiles and block any Instagram account �
 
 ## What it does
 
-Instagram hides profiles from you when someone blocks you. IG Scout bypasses that in both directions:
+Instagram hides profiles from you when someone blocks you. Instagram Viewer & Blocker bypasses that in both directions:
 
 - **Profile Info** — view full profile data for any account regardless of block status
 - **Block** — block any account even if they blocked you first
