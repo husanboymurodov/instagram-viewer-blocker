@@ -144,23 +144,31 @@ async function blockById(targetUserId) {
 }
 
 async function fetchProfile(username) {
-  // Try authenticated API first — fast, full data
+  const enc = encodeURIComponent(username);
+
+  // Method 1: authenticated API — works for accounts that haven't blocked you
   try {
-    const r = await fetch(`/api/v1/users/web_profile_info/?username=${encodeURIComponent(username)}`, {
+    const r = await fetch(`/api/v1/users/web_profile_info/?username=${enc}`, {
       headers: { 'x-ig-app-id': '936619743392459' },
     });
     const d = (await r.json())?.data?.user;
-    if (d?.id) return {
-      userId:    d.id,
-      username:  d.username,
-      followers: d.edge_followed_by?.count ?? d.follower_count ?? null,
-      following: d.edge_follow?.count      ?? d.following_count ?? null,
-    };
+    if (d?.id) return profileFromApiUser(d);
   } catch {}
 
-  // Anonymous fetch — no cookies → Instagram sees no block → full public HTML
+  // Method 2: same API endpoint but NO cookies — Instagram sees anonymous visitor,
+  // block relationship doesn't apply, returns full public profile data with counts
   try {
-    const r = await fetch(`/${encodeURIComponent(username)}/`, { credentials: 'omit' });
+    const r = await fetch(`/api/v1/users/web_profile_info/?username=${enc}`, {
+      credentials: 'omit',
+      headers: { 'x-ig-app-id': '936619743392459' },
+    });
+    const d = (await r.json())?.data?.user;
+    if (d?.id) return profileFromApiUser(d);
+  } catch {}
+
+  // Method 3: anonymous full-page HTML fetch — parse Relay store JSON blobs
+  try {
+    const r = await fetch(`/${enc}/`, { credentials: 'omit' });
     if (r.ok) {
       const html = await r.text();
       return parseProfileFromHtml(html, username.toLowerCase());
@@ -168,6 +176,15 @@ async function fetchProfile(username) {
   } catch {}
 
   return null;
+}
+
+function profileFromApiUser(d) {
+  return {
+    userId:    d.id,
+    username:  d.username,
+    followers: d.edge_followed_by?.count ?? d.follower_count  ?? null,
+    following: d.edge_follow?.count      ?? d.following_count ?? null,
+  };
 }
 
 // Recursively search parsed JSON for an object matching predicate
@@ -182,14 +199,11 @@ function deepFind(obj, predicate, depth = 8) {
 }
 
 function parseProfileFromHtml(html, usernameLower) {
-  // Parse each <script type="application/json"> block and traverse the JSON tree.
-  // Instagram embeds the full Relay store here, including follower/following counts.
+  // Strategy 1: parse <script type="application/json"> Relay store blocks
   const blocks = [...html.matchAll(/<script type="application\/json"[^>]*>([\s\S]*?)<\/script>/g)];
-
   for (const [, content] of blocks) {
     try {
-      const data = JSON.parse(content);
-      const user = deepFind(data, o =>
+      const user = deepFind(JSON.parse(content), o =>
         typeof o?.username === 'string' &&
         o.username.toLowerCase() === usernameLower &&
         (o.id || o.pk)
@@ -205,15 +219,26 @@ function parseProfileFromHtml(html, usernameLower) {
     } catch {}
   }
 
-  // Regex fallback if JSON parsing misses it
+  // Strategy 2: meta description — Instagram writes "X Followers, Y Following, Z Posts"
+  // in the <meta name="description"> tag for anonymous visitors
   const userId = parseUserIdFromHtml(html, usernameLower);
-  if (!userId) return null;
-  return {
-    userId,
-    username:  usernameLower,
-    followers: extractCount(html, 'edge_followed_by') ?? extractCount(html, 'follower_count'),
-    following: extractCount(html, 'edge_follow')      ?? extractCount(html, 'following_count'),
-  };
+  const metaDesc = html.match(/<meta[^>]+name="description"[^>]+content="([^"]+)"/i)?.[1]
+                ?? html.match(/<meta[^>]+content="([^"]+)"[^>]+name="description"/i)?.[1]
+                ?? '';
+  const fwrMatch = metaDesc.match(/([\d,]+)\s*Followers?/i);
+  const fwgMatch = metaDesc.match(/([\d,]+)\s*Following/i);
+  const fromMeta = fwrMatch || fwgMatch;
+
+  if (userId || fromMeta) {
+    return {
+      userId:    userId ?? null,
+      username:  usernameLower,
+      followers: fwrMatch ? parseInt(fwrMatch[1].replace(/,/g, ''), 10) : (extractCount(html, 'edge_followed_by') ?? extractCount(html, 'follower_count')),
+      following: fwgMatch ? parseInt(fwgMatch[1].replace(/,/g, ''), 10) : (extractCount(html, 'edge_follow')      ?? extractCount(html, 'following_count')),
+    };
+  }
+
+  return null;
 }
 
 function extractCount(html, key) {
