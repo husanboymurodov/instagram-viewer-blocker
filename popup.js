@@ -69,13 +69,13 @@ infoBtn.addEventListener('click', async () => {
   const priv = p.isPrivate;
 
   if (p.profilePic) {
-    avatar.src = p.profilePic;
-    avatar.style.display = 'block';
-    noPhoto.style.display = 'none';
     avatar.onerror = () => {
       avatar.style.display = 'none';
       noPhoto.style.display = 'block';
     };
+    avatar.src = p.profilePic;
+    avatar.style.display = 'block';
+    noPhoto.style.display = 'none';
   } else {
     avatar.style.display = 'none';
     noPhoto.style.display = 'block';

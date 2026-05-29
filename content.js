@@ -155,6 +155,7 @@ async function blockById(targetUserId) {
 
 async function fetchProfile(username) {
   const enc = encodeURIComponent(username);
+  let profile = null;
 
   // Method 1: authenticated API — works for accounts that haven't blocked you
   try {
@@ -162,30 +163,34 @@ async function fetchProfile(username) {
       headers: { 'x-ig-app-id': '936619743392459' },
     });
     const d = (await r.json())?.data?.user;
-    if (d?.id) return profileFromApiUser(d);
+    if (d?.id) profile = profileFromApiUser(d);
   } catch {}
 
   // Method 2: same API endpoint but NO cookies — Instagram sees anonymous visitor,
   // block relationship doesn't apply, returns full public profile data with counts
-  try {
+  if (!profile) try {
     const r = await fetch(`/api/v1/users/web_profile_info/?username=${enc}`, {
       credentials: 'omit',
       headers: { 'x-ig-app-id': '936619743392459' },
     });
     const d = (await r.json())?.data?.user;
-    if (d?.id) return profileFromApiUser(d);
+    if (d?.id) profile = profileFromApiUser(d);
   } catch {}
 
   // Method 3: anonymous full-page HTML fetch — parse Relay store JSON blobs
-  try {
+  if (!profile) try {
     const r = await fetch(`/${enc}/`, { credentials: 'omit' });
     if (r.ok) {
       const html = await r.text();
-      return parseProfileFromHtml(html, username.toLowerCase());
+      profile = parseProfileFromHtml(html, username.toLowerCase());
     }
   } catch {}
 
-  return null;
+  if (profile?.profilePic) {
+    const dataUrl = await picToDataUrl(profile.profilePic);
+    if (dataUrl) profile.profilePic = dataUrl;
+  }
+  return profile;
 }
 
 function profileFromApiUser(d) {
@@ -267,6 +272,22 @@ function parseProfileFromHtml(html, usernameLower) {
   }
 
   return null;
+}
+
+async function picToDataUrl(url) {
+  try {
+    const r = await fetch(url);
+    if (!r.ok) return null;
+    const blob = await r.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
 }
 
 function extractCount(html, key) {
