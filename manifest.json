@@ -3,7 +3,7 @@
   "name": "IG Blocker",
   "version": "1.0.0",
   "description": "Block Instagram accounts — even ones that blocked you first.",
-  "permissions": ["cookies", "activeTab", "scripting"],
+  "permissions": ["cookies", "activeTab", "scripting", "tabs"],
   "host_permissions": ["https://www.instagram.com/*"],
   "background": {
     "service_worker": "background.js"

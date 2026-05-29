@@ -10,11 +10,19 @@ function setStatus(el, msg, cls) {
   el.className = cls ?? '';
 }
 
+// Auto-fill username from active tab URL if on a profile page
+chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+  const url = tabs[0]?.url ?? '';
+  const m = url.match(/instagram\.com\/([a-zA-Z0-9._]+)\/?(?:\?|$)/);
+  const reserved = new Set(['explore', 'reels', 'stories', 'direct', 'accounts', 'p', 'tv']);
+  if (m && !reserved.has(m[1])) input.value = m[1];
+});
+
 btn.addEventListener('click', () => {
   const raw = input.value.trim().replace(/^@/, '');
   if (!raw) return;
   btn.disabled = true;
-  setStatus(status, 'Working…');
+  setStatus(status, 'Resolving…');
 
   chrome.runtime.sendMessage({ type: 'POPUP_BLOCK_USERNAME', username: raw }, (resp) => {
     btn.disabled = false;

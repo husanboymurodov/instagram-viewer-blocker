@@ -1,6 +1,6 @@
-// Runs on every instagram.com page. Injects block button on profile pages.
+// Runs on instagram.com — handles block requests from the popup only.
 
-const DOC_ID = '27585081607756220'; // usePolarisBlockManyMutation — may need refresh if Instagram redeploys
+const DOC_ID = '27585081607756220'; // usePolarisBlockManyMutation — refresh if Instagram redeploys
 
 function getCookie(name) {
   const m = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
@@ -16,22 +16,40 @@ function extractPageToken(dataKey) {
 }
 
 async function resolveUserId(username) {
-  // Method 1: profile info API (fails if target blocked you)
+  // Method 1: profile info API
   try {
-    const resp = await fetch(`/api/v1/users/web_profile_info/?username=${encodeURIComponent(username)}`, {
+    const r = await fetch(`/api/v1/users/web_profile_info/?username=${encodeURIComponent(username)}`, {
       headers: { 'x-ig-app-id': '936619743392459' }
     });
-    const data = await resp.json();
-    const id = data?.data?.user?.id;
+    const d = await r.json();
+    const id = d?.data?.user?.id;
     if (id) return id;
   } catch {}
 
-  // Method 2: search API (works even when blocked by target)
+  // Method 2: top-search (works even when target blocked you)
   try {
-    const resp = await fetch(`/web/search/topsearch/?query=${encodeURIComponent(username)}&context=blended&count=10`);
-    const data = await resp.json();
-    const user = data.users?.find(u => u.user.username.toLowerCase() === username.toLowerCase());
-    if (user?.user?.pk) return user.user.pk;
+    const r = await fetch(`/web/search/topsearch/?query=${encodeURIComponent(username)}&context=blended&count=10`);
+    const d = await r.json();
+    const u = d.users?.find(u => u.user.username.toLowerCase() === username.toLowerCase());
+    if (u?.user?.pk) return u.user.pk;
+  } catch {}
+
+  // Method 3: user search API
+  try {
+    const r = await fetch(`/api/v1/users/search/?query=${encodeURIComponent(username)}&count=10`, {
+      headers: { 'x-ig-app-id': '936619743392459' }
+    });
+    const d = await r.json();
+    const u = d.users?.find(u => u.username.toLowerCase() === username.toLowerCase());
+    if (u?.pk) return u.pk;
+  } catch {}
+
+  // Method 4: legacy ?__a=1 endpoint
+  try {
+    const r = await fetch(`/${encodeURIComponent(username)}/?__a=1&__d=dis`);
+    const d = await r.json();
+    const id = d?.graphql?.user?.id || d?.data?.user?.id;
+    if (id) return id;
   } catch {}
 
   return null;
@@ -83,158 +101,11 @@ async function blockById(targetUserId) {
   return json;
 }
 
-// ── ID fallback UI (when blocked by target) ───────────────────────────────────
-
-function showIdInput(btn, username) {
-  btn.remove();
-
-  const wrap = document.createElement('div');
-  wrap.id = 'ig-blocker-btn';
-  Object.assign(wrap.style, {
-    position: 'fixed',
-    bottom: '24px',
-    right: '24px',
-    zIndex: '9999',
-    background: '#1a1a1a',
-    border: '1px solid #444',
-    borderRadius: '10px',
-    padding: '12px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '6px',
-    boxShadow: '0 2px 12px rgba(0,0,0,0.5)',
-    width: '220px',
-  });
-
-  const label = document.createElement('p');
-  label.textContent = `Can't resolve @${username} — paste their User ID:`;
-  Object.assign(label.style, { color: '#aaa', fontSize: '11px', margin: '0' });
-
-  const link = document.createElement('a');
-  link.textContent = 'Get ID from commentpicker.com →';
-  link.href = `https://commentpicker.com/instagram-user-id.php`;
-  link.target = '_blank';
-  Object.assign(link.style, { color: '#ed4956', fontSize: '11px' });
-
-  const input = document.createElement('input');
-  input.placeholder = 'e.g. 77539356504';
-  Object.assign(input.style, {
-    padding: '6px 8px', borderRadius: '6px', border: '1px solid #444',
-    background: '#0f0f0f', color: '#fff', fontSize: '12px', outline: 'none',
-  });
-
-  const submitBtn = document.createElement('button');
-  submitBtn.textContent = 'Block by ID';
-  Object.assign(submitBtn.style, {
-    padding: '7px', borderRadius: '6px', border: 'none',
-    background: '#ed4956', color: '#fff', fontWeight: '600',
-    fontSize: '12px', cursor: 'pointer',
-  });
-
-  submitBtn.addEventListener('click', async () => {
-    const id = input.value.trim();
-    if (!id || !/^\d+$/.test(id)) { input.style.borderColor = '#ed4956'; return; }
-    submitBtn.textContent = 'Blocking…';
-    submitBtn.disabled = true;
-    try {
-      await blockById(id);
-      submitBtn.textContent = '✓ Blocked';
-      submitBtn.style.background = '#4CAF50';
-    } catch (err) {
-      submitBtn.textContent = '✗ Failed';
-      submitBtn.style.background = '#888';
-      submitBtn.title = err.message;
-    }
-  });
-
-  wrap.appendChild(label);
-  wrap.appendChild(link);
-  wrap.appendChild(input);
-  wrap.appendChild(submitBtn);
-  document.body.appendChild(wrap);
-}
-
-// ── Button injection ──────────────────────────────────────────────────────────
-
-function getProfileUsername() {
-  // Match /username/ but not /explore/, /reels/, etc.
-  const m = location.pathname.match(/^\/([a-zA-Z0-9._]+)\/?$/);
-  const reserved = new Set(['explore', 'reels', 'stories', 'direct', 'accounts', 'p', 'tv']);
-  return m && !reserved.has(m[1]) ? m[1] : null;
-}
-
-function injectButton(username) {
-  if (document.getElementById('ig-blocker-btn')) return;
-
-  const btn = document.createElement('button');
-  btn.id = 'ig-blocker-btn';
-  btn.textContent = 'Block';
-  Object.assign(btn.style, {
-    position: 'fixed',
-    bottom: '24px',
-    right: '24px',
-    zIndex: '9999',
-    padding: '10px 20px',
-    background: '#ed4956',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '8px',
-    fontWeight: '600',
-    fontSize: '14px',
-    cursor: 'pointer',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-  });
-
-  btn.addEventListener('click', async () => {
-    btn.textContent = 'Resolving…';
-    btn.disabled = true;
-    try {
-      const userId = await resolveUserId(username);
-      if (!userId) {
-        // Both APIs failed — they blocked us. Ask for manual ID.
-        showIdInput(btn, username);
-        return;
-      }
-      btn.textContent = 'Blocking…';
-      await blockById(userId);
-      btn.textContent = '✓ Blocked';
-      btn.style.background = '#4CAF50';
-    } catch (err) {
-      btn.textContent = '✗ Failed';
-      btn.style.background = '#888';
-      btn.title = err.message;
-      console.error('[IG Blocker]', err);
-    }
-  });
-
-  document.body.appendChild(btn);
-}
-
-function removeButton() {
-  document.getElementById('ig-blocker-btn')?.remove();
-}
-
-// Re-evaluate on SPA navigation
-let lastPath = location.pathname;
-const observer = new MutationObserver(() => {
-  if (location.pathname === lastPath) return;
-  lastPath = location.pathname;
-  removeButton();
-  const username = getProfileUsername();
-  if (username) injectButton(username);
-});
-observer.observe(document.body, { childList: true, subtree: true });
-
-// Initial load
-const username = getProfileUsername();
-if (username) injectButton(username);
-
-// Listen for block requests from popup
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.type === 'BLOCK_USERNAME') {
     resolveUserId(msg.username)
       .then(id => {
-        if (!id) throw new Error('Could not resolve user ID — try Block by User ID instead');
+        if (!id) throw new Error('Could not resolve user ID — try "Block by User ID" in the popup');
         return blockById(id);
       })
       .then(() => sendResponse({ ok: true }))
