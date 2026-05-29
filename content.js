@@ -143,25 +143,58 @@ async function blockById(targetUserId) {
   return json;
 }
 
+async function fetchProfile(username) {
+  const u = username.toLowerCase();
+
+  // Try authenticated API first — richest data
+  try {
+    const r = await fetch(`/api/v1/users/web_profile_info/?username=${encodeURIComponent(username)}`, {
+      headers: { 'x-ig-app-id': '936619743392459' },
+    });
+    const d = (await r.json())?.data?.user;
+    if (d?.id) return {
+      userId:    d.id,
+      username:  d.username,
+      followers: d.edge_followed_by?.count ?? d.follower_count ?? null,
+      following: d.edge_follow?.count      ?? d.following_count ?? null,
+    };
+  } catch {}
+
+  // Anonymous fetch — bypasses block relationship
+  try {
+    const r = await fetch(`/${encodeURIComponent(username)}/`, { credentials: 'omit' });
+    if (r.ok) {
+      const html = await r.text();
+      const userId = parseUserIdFromHtml(html, username);
+      if (userId) {
+        const followers = parseCountFromHtml(html, 'followers') ?? parseCountFromHtml(html, 'edge_followed_by');
+        const following = parseCountFromHtml(html, 'following') ?? parseCountFromHtml(html, 'edge_follow');
+        return { userId, username, followers, following };
+      }
+    }
+  } catch {}
+
+  return null;
+}
+
+function parseCountFromHtml(html, key) {
+  const m = html.match(new RegExp(`"${key}"[^}]{0,80}"count"\\s*:\\s*(\\d+)`));
+  return m ? parseInt(m[1], 10) : null;
+}
+
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-  if (msg.type === 'RESOLVE_USERNAME') {
-    resolveUserId(msg.username)
-      .then(id => sendResponse({ ok: !!id, userId: id }))
-      .catch(() => sendResponse({ ok: false, userId: null }));
+  if (msg.type === 'FETCH_PROFILE') {
+    fetchProfile(msg.username)
+      .then(profile => sendResponse({ ok: !!profile, profile }))
+      .catch(() => sendResponse({ ok: false, profile: null }));
     return true;
   }
   if (msg.type === 'BLOCK_USERNAME') {
     resolveUserId(msg.username)
       .then(id => {
-        if (!id) throw new Error('Could not resolve user ID — try "Block by User ID" in the popup');
+        if (!id) throw new Error('Could not resolve user ID');
         return blockById(id);
       })
-      .then(() => sendResponse({ ok: true }))
-      .catch(err => sendResponse({ ok: false, error: err.message }));
-    return true;
-  }
-  if (msg.type === 'BLOCK_ID') {
-    blockById(msg.userId)
       .then(() => sendResponse({ ok: true }))
       .catch(err => sendResponse({ ok: false, error: err.message }));
     return true;
