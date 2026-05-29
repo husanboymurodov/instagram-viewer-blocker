@@ -61,7 +61,7 @@ infoBtn.addEventListener('click', async () => {
   infoBtn.disabled = false;
 
   if (!resp || !resp.ok) {
-    setStatus('Could not fetch profile', 'err');
+    setStatus('Could not fetch profile — try reloading the Instagram tab', 'err');
     return;
   }
 
