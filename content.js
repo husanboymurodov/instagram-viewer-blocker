@@ -106,7 +106,7 @@ async function blockById(targetUserId) {
   const lsd       = extractPageToken('LSD');
 
   if (!csrftoken || !fbDtsg || !lsd) {
-    throw new Error(`Missing tokens — csrftoken:${!!csrftoken} fb_dtsg:${!!fbDtsg} lsd:${!!lsd}`);
+    throw new Error('Not logged in to Instagram. Please log in and try again.');
   }
 
   const body = new URLSearchParams({
