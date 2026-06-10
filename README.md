@@ -1,8 +1,6 @@
-# Instagram Viewer & Blocker
+# [Instagram Viewer & Blocker](https://husanboymurodov.github.io/instagram-viewer-blocker/)
 
 Chrome and Firefox extension to view profiles and block any Instagram account — even ones that have already blocked you.
-
-**[husanboymurodov.github.io/instagram-viewer-blocker](https://husanboymurodov.github.io/instagram-viewer-blocker/)**
 
 ## What it does
 
